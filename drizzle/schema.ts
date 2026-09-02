@@ -38,7 +38,13 @@ export const sources = mysqlTable("sources", {
   publisher: varchar("publisher", { length: 255 }).notNull(),
   jurisdiction: varchar("jurisdiction", { length: 80 }).notNull(),
   category: varchar("category", { length: 100 }).notNull(),
-  status: mysqlEnum("status", ["DEMO SOURCE", "VERIFIED SOURCE"]).notNull(),
+  status: mysqlEnum("status", ["VERIFIED", "UNAVAILABLE", "ERROR", "PENDING"]).notNull(),
+  officialUrl: text("officialUrl"),
+  sourceType: varchar("sourceType", { length: 30 }),
+  language: varchar("language", { length: 16 }),
+  accessMethod: varchar("accessMethod", { length: 40 }),
+  lastVerifiedAt: timestamp("lastVerifiedAt"),
+  contentHash: varchar("contentHash", { length: 64 }),
   indexedAt: timestamp("indexedAt"),
   documentCount: int("documentCount").default(0).notNull(),
 });
@@ -52,6 +58,34 @@ export const documents = mysqlTable("documents", {
   version: varchar("version", { length: 80 }),
   retrievedAt: timestamp("retrievedAt"),
   chunkCount: int("chunkCount").default(0).notNull(),
+  contentType: varchar("contentType", { length: 100 }),
+  extractedText: text("extractedText"),
+  contentHash: varchar("contentHash", { length: 64 }),
+  status: mysqlEnum("status", ["VERIFIED", "UNAVAILABLE", "ERROR", "PENDING"]).default("PENDING").notNull(),
+});
+
+export const documentChunks = mysqlTable("document_chunks", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  chunkIndex: int("chunkIndex").notNull(),
+  text: text("text").notNull(),
+  startOffset: int("startOffset").notNull(),
+  endOffset: int("endOffset").notNull(),
+});
+
+export const evidence = mysqlTable("evidence", {
+  id: int("id").autoincrement().primaryKey(),
+  evidenceId: varchar("evidenceId", { length: 100 }).notNull().unique(),
+  sourceId: varchar("sourceId", { length: 64 }).notNull(),
+  documentId: int("documentId"),
+  chunkId: int("chunkId"),
+  officialUrl: text("officialUrl").notNull(),
+  section: varchar("section", { length: 255 }),
+  page: varchar("page", { length: 40 }),
+  excerpt: text("excerpt").notNull(),
+  relevanceScore: varchar("relevanceScore", { length: 20 }).notNull(),
+  verificationStatus: mysqlEnum("verificationStatus", ["VERIFIED", "UNAVAILABLE", "ERROR", "PENDING"]).notNull(),
+  retrievedAt: timestamp("retrievedAt").notNull(),
 });
 
 export const citations = mysqlTable("citations", {
@@ -63,6 +97,8 @@ export const citations = mysqlTable("citations", {
   excerpt: text("excerpt"),
   relevanceScore: varchar("relevanceScore", { length: 20 }),
   retrievedAt: timestamp("retrievedAt"),
+  evidenceId: varchar("evidenceId", { length: 100 }),
+  claimText: text("claimText"),
 });
 
 export const screenings = mysqlTable("screenings", {
