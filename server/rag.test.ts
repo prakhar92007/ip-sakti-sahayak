@@ -4,16 +4,17 @@ import { demoChat, demoRegulatoryPathway, demoScreening, getSource, listSources 
 describe("IP-SAKTI demo RAG services", () => {
   it("exposes clearly labeled demo sources with citation metadata available", () => {
     const records = listSources();
-    expect(records.length).toBeGreaterThanOrEqual(6);
+    expect(records.length).toBeGreaterThanOrEqual(7);
     expect(records.every((source) => source.status === "DEMO SOURCE")).toBe(true);
     expect(getSource("tkdl")?.jurisdiction).toBe("India");
+    expect(getSource("dshea")?.jurisdiction).toBe("United States");
   });
 
   it("returns a source-cited preliminary chat response", async () => {
     const response = await demoChat({ question: "Can I patent this Ayurvedic formulation?", jurisdiction: "India" });
     expect(response.mode).toBe("DEMO MODE");
     expect(response.risk).toBe("Medium");
-    expect(response.citations.length).toBe(3);
+    expect(response.citations.length).toBe(7);
     expect(response.citations[0]?.citationId).toContain("IP-SAKTI");
     expect(response.citations[0]?.excerpt).toContain("demo");
   });

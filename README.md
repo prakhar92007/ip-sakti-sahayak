@@ -95,3 +95,7 @@ The production implementation should fail safely when no source is found, show t
 - Desktop visual verification: landing, Sahayak, screening, regulatory, comparison, sources, reports and dashboard.
 - Mobile visual verification: Sahayak and screening at 375px viewport.
 - Browser interaction verification: route navigation, chat submission and response, language menu and visible Hindi UI copy.
+
+## Upgrade pass notes
+
+The current checkpoint preserves the original forest-green, ivory and saffron identity while making the SIH story more explicit on the first screen. The homepage now leads with the full IP/regulatory subtitle, a dedicated **Start IP Screening** action, five problem lenses and an explicit Retrieval-Augmented Generation solution statement. Sahayak now shows a compact pre-chat intent dashboard, supported regimes and a six-stage processing animation. Demo responses surface **7 relevant demo sources**, and the source drawer includes a “Why this source?” explanation. The **Judge Demo** button opens a guided modal with the complete eight-step walkthrough before entering the workspace.

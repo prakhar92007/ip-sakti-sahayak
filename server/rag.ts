@@ -79,6 +79,7 @@ export const demoSources: SourceRecord[] = [
   { id: "tkdl", name: "TKDL", title: "Traditional Knowledge Digital Library context record", publisher: "CSIR / Ministry of AYUSH", jurisdiction: "India", category: "Traditional knowledge", status: "DEMO SOURCE", indexedAt: "2026-09-02T00:00:00.000Z", documentCount: 18540 },
   { id: "ayush", name: "Ministry of AYUSH", title: "Ayurveda product pathway reference", publisher: "Ministry of AYUSH", jurisdiction: "India", category: "Regulatory", status: "DEMO SOURCE", indexedAt: "2026-09-02T00:00:00.000Z", documentCount: 96 },
   { id: "fda", name: "FDA resources", title: "US market pathway context for wellness products", publisher: "U.S. Food and Drug Administration", jurisdiction: "United States", category: "Regulatory", status: "DEMO SOURCE", indexedAt: "2026-09-02T00:00:00.000Z", documentCount: 312 },
+  { id: "dshea", name: "DSHEA resources", title: "US dietary supplement framework context", publisher: "US regulatory reference set", jurisdiction: "United States", category: "Regulatory", status: "DEMO SOURCE", indexedAt: "2026-09-02T00:00:00.000Z", documentCount: 184 },
   { id: "eu", name: "EU regulatory resources", title: "European market classification context", publisher: "European Union resources", jurisdiction: "European Union", category: "Regulatory", status: "DEMO SOURCE", indexedAt: "2026-09-02T00:00:00.000Z", documentCount: 407 },
 ];
 
@@ -101,8 +102,8 @@ export function getSource(id: string) {
 }
 
 export async function retrieveDemoEvidence(query: string, jurisdiction = "India") {
-  const preferred = jurisdiction === "India" ? [demoSources[0], demoSources[2], demoSources[1]] : jurisdiction === "United States" ? [demoSources[4], demoSources[1], demoSources[0]] : [demoSources[1], demoSources[5], demoSources[0]];
-  return preferred.map((source, index) => toCitation(source, 0.94 - index * 0.05));
+  const preferred = jurisdiction === "India" ? [demoSources[0], demoSources[2], demoSources[1], demoSources[3], demoSources[4], demoSources[6], demoSources[5]] : jurisdiction === "United States" ? [demoSources[4], demoSources[6], demoSources[1], demoSources[0], demoSources[5], demoSources[3], demoSources[2]] : [demoSources[1], demoSources[5], demoSources[4], demoSources[0], demoSources[2], demoSources[3], demoSources[6]];
+  return preferred.map((source, index) => toCitation(source, 0.94 - index * 0.035));
 }
 
 export async function demoChat(input: ChatRequest): Promise<ChatResponse> {
