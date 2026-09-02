@@ -168,3 +168,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .judge-modal { animation: modal-in 220ms var(--ease-out); }.judge-modal-glow { position: absolute; right: -100px; top: -130px; width: 330px; height: 330px; border: 1px solid #dbc18b; border-radius: 50%; opacity: .45; }.judge-modal-glow::after { position: absolute; right: 45px; bottom: 30px; width: 9px; height: 9px; border-radius: 50%; background: #d29a4c; content: ''; box-shadow: -34px 20px #9fc8a2, -63px -11px #d7e9d6; }
 @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-width: 767px) { .welcome-dashboard { margin-left: 0; }.welcome-grid { grid-template-columns: 1fr; }.welcome-card small { white-space: normal; }.judge-modal h2 { font-size: 32px; } }
+
+.why-answer-button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cfe0d1; border-radius: 999px; background: #f5faf3; padding: 7px 11px; color: #4d765d; font-size: 11px; font-weight: 700; transition: all 160ms var(--ease-out); }
+.why-answer-button:hover { border-color: #9fcaab; background: #e9f4e7; transform: translateY(-1px); }
