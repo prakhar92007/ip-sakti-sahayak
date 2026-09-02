@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -191,13 +192,63 @@ function SahayakPage({ onSource, t, navigate, lang, setLang }: { onSource: (sour
   const pack = getLanguagePack(lang); const ragStages = pack.stages;
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; answer?: Answer }[]>([{ role: "assistant", content: pack.chat.greeting, answer: undefined }]);
   const [question, setQuestion] = useState("");
+  const chatMutation = trpc.sahayak.chat.useMutation();
   useEffect(() => { setMessages((prev) => prev.map((message, index) => index === 0 && message.role === "assistant" && !message.answer ? { ...message, content: pack.chat.greeting } : message)); }, [lang]);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingStage, setThinkingStage] = useState(-1);
   const [jurisdiction, setJurisdiction] = useState("India");
   const [productType, setProductType] = useState("Ayurvedic medicine");
   const suggested = pack.suggestions;
-  const submit = (value = question) => { const clean = value.trim(); if (!clean || isThinking) return; setQuestion(""); setMessages((prev) => [...prev, { role: "user", content: clean }]); setIsThinking(true); setThinkingStage(0); let step = 0; const interval = window.setInterval(() => { step += 1; if (step >= ragStages.length) { window.clearInterval(interval); setThinkingStage(-1); setIsThinking(false); const responseJurisdiction = clean.toLowerCase().includes("united states") || clean.toLowerCase().includes("usa") ? "United States" : jurisdiction; setMessages((prev) => [...prev, { role: "assistant", content: pack.chat.preliminary, answer: { ...demoAnswer, question: clean, answer: `${pack.chat.executive}: ${pack.chat.disclaimer}`, findings: [pack.chat.findings, pack.chat.sources, pack.chat.why], nextSteps: [pack.chat.nextSteps, pack.chat.disclaimer], jurisdiction: responseJurisdiction } }]); } else { setThinkingStage(step); } }, 620); };
+  const submit = (value = question) => {
+    const clean = value.trim();
+    if (!clean || isThinking || chatMutation.isPending) return;
+    setQuestion("");
+    setMessages((prev) => [...prev, { role: "user", content: clean }]);
+    setIsThinking(true);
+    setThinkingStage(0);
+    let step = 0;
+    const interval = window.setInterval(() => {
+      step += 1;
+      setThinkingStage(step % ragStages.length);
+    }, 620);
+    chatMutation.mutate({ question: clean, language: lang, jurisdiction, productType }, {
+      onSuccess: (response) => {
+        window.clearInterval(interval);
+        setThinkingStage(-1);
+        setIsThinking(false);
+        const answer: Answer = {
+          question: clean,
+          answer: response.answer,
+          findings: response.findings,
+          jurisdiction: response.jurisdiction,
+          risk: response.risk,
+          nextSteps: response.nextSteps,
+          sources: response.citations.map((citation, index) => ({
+            id: citation.id,
+            name: citation.name,
+            title: citation.title,
+            publisher: citation.publisher,
+            jurisdiction: citation.jurisdiction,
+            category: citation.category,
+            status: citation.status,
+            indexed: citation.indexedAt,
+            documents: String(citation.documentCount),
+            section: citation.section,
+            excerpt: citation.excerpt,
+            score: String(citation.relevanceScore),
+            color: ["#d5eadf", "#f3dfbf", "#e5ddf2", "#e7edc9", "#d8e7ef", "#eadfc8", "#f0d8d1"][index % 7],
+          })),
+        };
+        setMessages((prev) => [...prev, { role: "assistant", content: response.answer, answer }]);
+      },
+      onError: (error) => {
+        window.clearInterval(interval);
+        setThinkingStage(-1);
+        setIsThinking(false);
+        setMessages((prev) => [...prev, { role: "assistant", content: `Demo backend error: ${error.message}` }]);
+      },
+    });
+  };
   const onSubmit = (event: FormEvent) => { event.preventDefault(); submit(); };
   return <div className="sahayak-page"><PageHeader eyebrow="AI RESEARCH COMPANION" title="IP-SAKTI Sahayak" description="Your multilingual assistant for Ayurveda IP & regulatory research. Ask a question, inspect the evidence trail and keep the caveats visible." action={<div className="flex gap-2"><button className="btn-secondary" type="button" onClick={() => setMessages([{ role: "assistant", content: "New demo chat started. What would you like to research?" }])}><Plus size={15} /> New chat</button><button className="btn-primary" type="button" onClick={() => navigate("/reports")}><CloudDownload size={15} /> Export report</button></div>} /><div className="mt-8 grid gap-5 xl:grid-cols-[1fr_295px]"><section className="chat-shell"><div className="chat-toolbar"><div className="flex flex-wrap gap-2"><SelectPill label={pack.chat.responseLanguage} value={languages.find((x) => x.code === lang)?.native || "English"} options={languages.map((x) => x.native)} onChange={(value) => setLang(languages.find((x) => x.native === value)?.code || "en")} /><SelectPill label="Jurisdiction" value={jurisdiction} options={["India", "United States", "European Union", "International"]} onChange={setJurisdiction} /><SelectPill label="Product" value={productType} options={["Ayurvedic medicine", "Herbal formulation", "Nutraceutical", "Wellness product", "Cosmetic", "Other"]} onChange={setProductType} /></div><Pill tone="green"><ShieldCheck size={12} /> RAG-ready</Pill></div><div className="chat-messages">{messages.map((message, index) => <div className={`message-row ${message.role}`} key={`${message.content}-${index}`}>{message.role === "assistant" && <div className="mini-logo mt-1"><Bot size={14} /></div>}<div className={message.role === "assistant" ? "assistant-bubble" : "user-bubble"}><div className="text-[13px] leading-6">{message.content}</div>{message.answer && <AnswerCard answer={message.answer} onSource={onSource} t={t} />}</div></div>)}{messages.length === 1 && !messages[0]?.answer && <div className="welcome-dashboard"><div><div className="chat-label">{pack.chat.help}</div><div className="welcome-grid">{([ ["Patentability", "Evaluate preliminary patentability considerations.", "Can I patent this Ayurvedic formulation?", Fingerprint], ["Traditional Knowledge", "Identify areas requiring traditional knowledge review.", "Does traditional knowledge affect patentability?", Sprout], ["Regulatory pathways", "Explore market-specific regulatory workflows.", "What regulatory pathway may apply to this product?", ClipboardCheck], ["Export compliance", "Explore cross-border regulatory considerations.", "What should I check before exporting an Ayurvedic product to the EU?", Globe2], ["Country comparison", "Compare selected jurisdictions.", "Compare India and US regulatory considerations.", BarChart3], ["GI protection", "Understand preliminary GI-related considerations.", "How can I protect an Ayurveda-based product internationally?", ShieldCheck] ] as [string, string, string, LucideIcon][]).map(([label, description, prompt, Icon]) => <button type="button" className="welcome-card" key={label} onClick={() => setQuestion(prompt)}><span className="welcome-card-icon"><Icon size={15} /></span><span><strong>{label}</strong><small>{description}</small></span><ArrowUpRight size={13} /></button>)}</div></div><div className="supported-regimes"><span className="chat-label">SUPPORTED REGIMES</span><div className="mt-2 flex flex-wrap gap-2"><Pill tone="green">India</Pill><Pill tone="blue">United States</Pill><Pill tone="gold">European Union</Pill><Pill>International</Pill></div></div></div>}{isThinking && <div className="message-row assistant"><div className="mini-logo"><Bot size={14} /></div><div className="assistant-bubble"><div className="flex items-center gap-2 text-xs font-semibold text-[#557263]"><span className="thinking-dots"><i /><i /><i /></span>{ragStages[Math.max(0, thinkingStage)]}</div><div className="mt-2 text-[10px] uppercase tracking-[0.12em] text-[#9aa9a0]">Query understanding · retrieval · ranking · generation · citation tracing</div><div className="mt-3 flex gap-1">{ragStages.map((stage, index) => <span key={stage} className={`h-1 flex-1 rounded-full ${index <= thinkingStage ? "bg-[#5b9468]" : "bg-[#dbe8dc]"}`} />)}</div></div></div>}</div><form className="chat-composer" onSubmit={onSubmit}><div className="composer-input"><Sparkles size={16} className="text-[#c68932]" /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about patents, TKDL, GI protection, registration or regulatory requirements…" aria-label="Ask IP-SAKTI" /><button className="send-button" type="submit" aria-label="Send question"><Send size={16} /></button></div><div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-[#91a097]"><span>{pack.chat.disclaimer}</span><span className="hidden font-mono sm:block">⌘ ENTER</span></div></form></section><aside className="space-y-4"><div className="side-card"><div className="flex items-center justify-between"><div className="card-kicker">{pack.chat.suggested}</div><Lightbulb size={16} className="text-[#c78a38]" /></div><div className="mt-4 space-y-2">{suggested.map((item) => <button type="button" key={item} className="suggested-question" onClick={() => submit(item)}>{item}<ArrowUpRight size={13} /></button>)}</div></div><div className="side-card bg-[#163b32] !text-white"><div className="flex items-center gap-2 text-[#e7ba76]"><ShieldCheck size={16} /><span className="card-kicker !text-[#e7ba76]">Why this matters</span></div><p className="mt-4 text-sm leading-6 text-[#c0d2c6]">Every response has a visible source trail, jurisdiction and preliminary label. The point is not just a fluent answer — it is a verifiable starting point.</p><button className="mt-5 flex items-center gap-2 text-xs font-bold text-[#efc27e]" type="button">See the evidence model <ArrowRight size={14} /></button></div></aside></div></div>;
 }
