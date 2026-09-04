@@ -2,7 +2,7 @@ export type ProcessedQuery = { original: string; language: string; intent: strin
 
 export function processQuery(question: string, language = "en"): ProcessedQuery {
   const q = question.toLowerCase();
-  const jurisdictions = [/\bindia|भारत|भारतीय\b/.test(q) ? "India" : "", /\busa|u\.s\.|united states|अमेरिका\b/.test(q) ? "United States" : "", /\beu|europe|european union|यूरोप\b/.test(q) ? "European Union" : ""].filter(Boolean);
+  const jurisdictions = [/india|भारत|भारतीय/.test(q) ? "India" : "", /usa|u\.s\.|united states|america|अमेरिका/.test(q) ? "United States" : "", /eu|europe|european union|europe|यूरोप/.test(q) ? "European Union" : "", /international|global|अंतरराष्ट्रीय/.test(q) ? "International" : ""].filter(Boolean);
   const intent = [
     /patent|ip|बौद्धिक संपदा|पेटेंट/.test(q) ? "patent" : "",
     /ayur|herbal|आयुर्वेद|हर्बल/.test(q) ? "ayurveda" : "",

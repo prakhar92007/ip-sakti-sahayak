@@ -1,4 +1,4 @@
-export type TextChunk = { chunkIndex: number; text: string; startOffset: number; endOffset: number };
+export type TextChunk = { chunkIndex: number; text: string; startOffset: number; endOffset: number; section?: string; page?: string; heading?: string; canonicalUrl?: string; contentHash?: string; createdAt?: string };
 
 export function chunkText(text: string, size = 1200, overlap = 180): TextChunk[] {
   const normalized = text.replace(/\s+/g, " ").trim();

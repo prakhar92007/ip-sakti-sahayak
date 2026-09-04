@@ -16,8 +16,9 @@ describe("official ingestion guardrails", () => {
     expect(extracted.text).not.toContain("Main Menu");
   });
 
-  it("does not register unvalidated foreign authorities as verified sources", () => {
-    expect(officialSources.some((source) => /TKDL|WIPO|USPTO|FDA|European Commission|EMA|EUR-Lex/i.test(source.authority))).toBe(false);
-    expect(officialSources.every((source) => source.status === "PENDING")).toBe(true);
+  it("registers international candidates without treating them as verified", () => {
+    const candidates = officialSources.filter((source) => /TKDL|WIPO|USPTO|FDA|European Commission|EMA|EUR-Lex/i.test(`${source.authority} ${source.title}`));
+    expect(candidates.length).toBeGreaterThanOrEqual(7);
+    expect(candidates.every((source) => source.status === "PENDING")).toBe(true);
   });
 });

@@ -36,6 +36,7 @@ export const appRouter = router({
       const result = await retrieveOfficialEvidence(input.question, input.language, input.jurisdiction);
       return { query: result.query, sourceSelected: result.results.map((item) => item.source), documents: result.results.map((item) => item.document), chunks: result.results.map((item) => item.chunk), excerpts: result.results.map((item) => item.chunk.text), failedSources: result.failedSources, stats: result.stats };
     }),
+    debugGrounded: publicProcedure.input(z.object({ question: z.string().min(1), language: z.string().optional(), jurisdiction: z.string().optional() })).query(({ input }) => groundedChat(input.question, input.language, input.jurisdiction)),
   }),
   screening: router({
     run: publicProcedure.input(screeningInput).mutation(({ input }) => demoScreening(input)),
@@ -47,7 +48,7 @@ export const appRouter = router({
     markets: publicProcedure.input(z.object({ leftMarket: z.string(), rightMarket: z.string() })).query(({ input }) => demoCompare(input.leftMarket, input.rightMarket)),
   }),
   sources: router({
-    list: publicProcedure.query(async () => { const rows = await listPersistedOfficialSources(); return rows.length ? rows.map((source) => ({ id: source.id, name: source.name, title: source.title, publisher: source.publisher || source.name, jurisdiction: source.jurisdiction, category: source.category, status: source.status, indexedAt: source.lastVerifiedAt, documentCount: source.documentCount || 0, officialUrl: source.officialUrl })) : officialSources.map((source) => ({ id: source.sourceId, name: source.authority, title: source.title, publisher: source.authority, jurisdiction: source.jurisdiction, category: "Official source", status: source.status, indexedAt: source.lastVerifiedAt || null, documentCount: source.status === "VERIFIED" ? 1 : 0, officialUrl: source.officialUrl })); }),
+    list: publicProcedure.query(async () => { const rows = await listPersistedOfficialSources(); return rows.length ? rows.map((source) => ({ id: source.id, name: source.name, title: source.title, publisher: source.publisher || source.name, jurisdiction: source.jurisdiction, category: source.category, status: source.status, indexedAt: source.lastVerifiedAt, documentCount: source.documentCount || 0, officialUrl: source.officialUrl, failureReason: source.failureReason })) : officialSources.map((source) => ({ id: source.sourceId, name: source.authority, title: source.title, publisher: source.authority, jurisdiction: source.jurisdiction, category: "Official source", status: source.status, indexedAt: source.lastVerifiedAt || null, documentCount: source.status === "VERIFIED" ? 1 : 0, officialUrl: source.officialUrl, failureReason: source.failureReason || null })); }),
     byId: publicProcedure.input(z.object({ id: z.string() })).query(({ input }) => { const source = officialSources.find((item) => item.sourceId === input.id); return source ? { ...source, id: source.sourceId, name: source.authority, publisher: source.authority, category: "Official source", indexedAt: source.lastVerifiedAt || null, documentCount: source.status === "VERIFIED" ? 1 : 0 } : null; }),
   }),
   reports: router({

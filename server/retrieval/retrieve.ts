@@ -2,13 +2,16 @@ import { ingestOfficialSource } from "../integrations/officialIngestion";
 import { persistOfficialSourceStatus } from "../db";
 import { officialSources, type OfficialSource } from "../integrations/sourceRegistry";
 import { processQuery, type ProcessedQuery } from "./queryProcessor";
+import { semanticRetrievalStatus } from "./semantic";
+import type { TextChunk } from "../ingestion/chunker";
 
-export type RetrievedChunk = { source: OfficialSource; document: { title: string; url: string; contentType: string; fetchedAt: string; sha256: string }; chunk: { chunkIndex: number; text: string; startOffset: number; endOffset: number }; relevanceScore: number };
-export type RetrievalResult = { query: ProcessedQuery; results: RetrievedChunk[]; failedSources: Array<{ sourceId: string; error: string }>; stats: { sourcesSearched: number; sourcesRetrieved: number; chunksRetrieved: number } };
+export type RetrievedChunk = { source: OfficialSource; document: { title: string; url: string; contentType: string; fetchedAt: string; sha256: string }; chunk: TextChunk; relevanceScore: number };
+export type RetrievalResult = { query: ProcessedQuery; results: RetrievedChunk[]; failedSources: Array<{ sourceId: string; authority: string; officialUrl: string; jurisdiction: string; status: "UNAVAILABLE" | "ERROR"; error: string }>; stats: { sourcesSearched: number; sourcesSearchedIds: string[]; sourcesRetrieved: number; chunksRetrieved: number; documentsRetrieved: number; retrievalScores: Array<{ sourceId: string; chunkIndex: number; score: number }>; retrievalMethod: string; retrievalTimestamp: string; semanticEnabled: boolean } };
 
 const tokenize = (text: string) => text.toLowerCase().split(/[^a-z0-9\u0900-\u097f]+/i).filter((term) => term.length > 2);
 
 export async function retrieveOfficialEvidence(question: string, language = "en", jurisdiction?: string): Promise<RetrievalResult> {
+  const retrievalTimestamp = new Date().toISOString();
   const query = processQuery(question, language);
   const requested = jurisdiction && jurisdiction !== "International" ? [jurisdiction] : query.jurisdictions;
   const selected = officialSources.filter((source) => requested.includes(source.jurisdiction) || (requested.includes("India") && source.jurisdiction === "India"));
@@ -17,7 +20,7 @@ export async function retrieveOfficialEvidence(question: string, language = "en"
   const intentTerms: Record<string, string[]> = { patent: ["patent", "patents", "invention", "novelty", "section"], ayurveda: ["ayurveda", "ayurvedic", "herbal", "drug", "medicine"], regulation: ["regulation", "rules", "quality", "manufacture", "export"], "traditional-knowledge": ["traditional", "knowledge", "tkdl", "indigenous"] };
   const terms = Array.from(new Set([...tokenize(question), ...query.intent.flatMap((intent) => intentTerms[intent] || [])]));
   const results: RetrievedChunk[] = [];
-  const failedSources: Array<{ sourceId: string; error: string }> = [];
+  const failedSources: RetrievalResult["failedSources"] = [];
   for (const source of searchable) {
     try {
       const document = await ingestOfficialSource(source);
@@ -34,11 +37,13 @@ export async function retrieveOfficialEvidence(question: string, language = "en"
       sourceMatches.sort((a, b) => b.relevanceScore - a.relevanceScore);
       results.push(...sourceMatches.slice(0, 2));
     } catch (error) {
-      source.status = "UNAVAILABLE";
-      failedSources.push({ sourceId: source.sourceId, error: error instanceof Error ? error.message : String(error) });
+      source.failureReason = error instanceof Error ? error.message : String(error);
+      source.status = /fetch failed|empty body|timeout|timed out|ECONN|ENOTFOUND|network/i.test(source.failureReason) ? "UNAVAILABLE" : "ERROR";
+      failedSources.push({ sourceId: source.sourceId, authority: source.authority, officialUrl: source.officialUrl, jurisdiction: source.jurisdiction, status: source.status, error: source.failureReason });
       try { await persistOfficialSourceStatus(source); } catch { /* keep the retrieval response safe if status persistence is unavailable */ }
     }
   }
   results.sort((a, b) => b.relevanceScore - a.relevanceScore);
-  return { query, results: results.slice(0, 12), failedSources, stats: { sourcesSearched: selected.length, sourcesRetrieved: new Set(results.map((result) => result.source.sourceId)).size, chunksRetrieved: results.length } };
+  const finalResults = results.slice(0, 12);
+  return { query, results: finalResults, failedSources, stats: { sourcesSearched: selected.length, sourcesSearchedIds: selected.map((source) => source.sourceId), sourcesRetrieved: new Set(finalResults.map((result) => result.source.sourceId)).size, chunksRetrieved: finalResults.length, documentsRetrieved: new Set(finalResults.map((result) => result.document.sha256)).size, retrievalScores: finalResults.map((result) => ({ sourceId: result.source.sourceId, chunkIndex: result.chunk.chunkIndex, score: result.relevanceScore })), retrievalMethod: semanticRetrievalStatus.enabled ? "hybrid-keyword-semantic" : "keyword-official-corpus", retrievalTimestamp, semanticEnabled: semanticRetrievalStatus.enabled } };
 }

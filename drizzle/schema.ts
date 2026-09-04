@@ -44,6 +44,7 @@ export const sources = mysqlTable("sources", {
   language: varchar("language", { length: 16 }),
   accessMethod: varchar("accessMethod", { length: 40 }),
   lastVerifiedAt: timestamp("lastVerifiedAt"),
+  failureReason: text("failureReason"),
   contentHash: varchar("contentHash", { length: 64 }),
   indexedAt: timestamp("indexedAt"),
   documentCount: int("documentCount").default(0).notNull(),
@@ -71,6 +72,12 @@ export const documentChunks = mysqlTable("document_chunks", {
   text: text("text").notNull(),
   startOffset: int("startOffset").notNull(),
   endOffset: int("endOffset").notNull(),
+  section: varchar("section", { length: 255 }),
+  page: varchar("page", { length: 40 }),
+  heading: varchar("heading", { length: 255 }),
+  canonicalUrl: text("canonicalUrl"),
+  contentHash: varchar("contentHash", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export const evidence = mysqlTable("evidence", {
@@ -98,6 +105,7 @@ export const citations = mysqlTable("citations", {
   relevanceScore: varchar("relevanceScore", { length: 20 }),
   retrievedAt: timestamp("retrievedAt"),
   evidenceId: varchar("evidenceId", { length: 100 }),
+  claimId: varchar("claimId", { length: 100 }),
   claimText: text("claimText"),
 });
 

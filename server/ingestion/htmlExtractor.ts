@@ -1,11 +1,14 @@
 export type ExtractedText = { title: string; text: string; documentType: "HTML" };
 
 export function extractHtml(html: string): ExtractedText {
-  const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, "").trim() || "Official HTML document";
+  const decodeEntities = (value: string) => value.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/&#8211;/gi, "–").replace(/&#8212;/gi, "—");
+  const title = decodeEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, "").trim() || "Official HTML document");
   const sectionBody = html.match(/<div[^>]+id=["']sectionBody["'][^>]*>([\s\S]*?)<\/div>/i)?.[1];
   const chapterDetails = html.match(/<div[^>]+class=["']chapterDetailsAreaBox["'][^>]*>([\s\S]*?)<\/div>/i)?.[1];
+  const main = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i)?.[1];
+  const article = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1];
   const table = html.match(/<table[\s\S]*?<\/table>/i)?.[0];
-  const content = sectionBody || chapterDetails || (table && table.length > 200 ? table : html);
+  const content = sectionBody || chapterDetails || main || article || (table && table.length > 200 ? table : html);
   const text = content
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -16,6 +19,8 @@ export function extractHtml(html: string): ExtractedText {
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, "\"")
     .replace(/&#39;/gi, "'")
+    .replace(/&#8211;/gi, "–")
+    .replace(/&#8212;/gi, "—")
     .replace(/&zwj;|&#8205;/gi, "")
     .replace(/\u200d/g, "")
     .replace(/-->/g, " ")
